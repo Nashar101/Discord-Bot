@@ -91,9 +91,8 @@ Bot.select_menu(custom_id: 'test_select') do |event|
 end
 
 Bot.application_command(:valorant_stats) do |event|
-    puts event.user.inspect
+    puts event.user.avatar_url
     puts ENV.fetch("SLASH_COMMAND_BOT_SERVER_ID", nil)
-    event.respond(content: "Im working")
     StatsService.new(event.user.username).call
 end
 
