@@ -25,7 +25,8 @@ module DiscordBot
     #
     # config.time_zone = "Central Time (US & Canada)"
     # config.eager_load_paths << Rails.root.join("extras")
+    config.api_only = true
+    config.hosts << "jay-pleased-badly.ngrok-free.app"
   end
 end
-
 

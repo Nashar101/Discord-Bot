@@ -5,8 +5,8 @@ class StatsService
     include ActionView::Helpers::AssetUrlHelper
     include ActionView::Helpers::AssetTagHelper
 
-    def initialize(username)
-        @user = username
+    def initialize(user)
+        @user = User.find(user.id)
     end
 
     def call
@@ -18,33 +18,37 @@ class StatsService
 
             # Build the embed object
         embed = Discordrb::Webhooks::Embed.new
-        embed.title = "#{@user}'s Valorant Stats"
+        embed.title = "Crop Stomper's Valorant Stats"
         embed.description = "Level: #{basic_info[:account_level]} (Fucking no life)"
         embed.color = 0xFF0000 # optional nice red color
 
         embed.author = Discordrb::Webhooks::EmbedAuthor.new
-        embed.author.name = @user
-        embed.author.icon_url = basic_info[:small_card]
+        embed.author.name = @user.username
+        embed.author.icon_url = @user.avatar_url
 
         embed.thumbnail = Discordrb::Webhooks::EmbedThumbnail.new
-        puts ActionController::Base.helpers.asset_url("Immortal_1_Rank.png", host: Rails.application.config.asset_host || "http://localhost:3000")
-        puts rank_info[:current_rank]
         embed.thumbnail.url = RankHelper.rank(rank_info[:current_rank]["name"])
 
         embed_image = Discordrb::Webhooks::EmbedImage.new
         embed_image.url = basic_info[:wide_card]
         embed.image = embed_image
 
-        curr_rank_field = generate_embed_field("Current Rank", rank_info[:current_rank]["name"], false)
-        spacing = generate_embed_field("\u200B", "\u200B", false)
-        peak_rank_field = generate_embed_field("Peak Rank", rank_info[:peak_rank]["name"], true)
+        curr_rank_field = generate_embed_field("Current Rank", rank_info[:current_rank]["name"], true)
+        spacing = generate_embed_field("\u200B", "", false)
+        small_spacing = generate_embed_field("", "", false)
+        peak_rank_field = generate_embed_field("Peak Rank", rank_info[:peak_rank]["name"], false)
+        rr_field = generate_embed_field("RR", rank_info[:rr], true)
 
         kda = get_kda
         puts kda
         kd_field = generate_embed_field("KD", kda[:kd], true)
         kda_field = generate_embed_field("KDA", kda[:kda], true)
 
-        embed.fields = [peak_rank_field, spacing, curr_rank_field, kd_field, kda_field]
+        embed.fields = [peak_rank_field, spacing, curr_rank_field, rr_field, small_spacing, kd_field, kda_field]
+
+        embed.footer = Discordrb::Webhooks::EmbedFooter.new
+        embed.footer.icon_url = basic_info[:wide_card]
+        embed.footer.text = "Hello"
             # Send the message with embed
         Bot.send_message(ChannelID, nil, false, embed)
     end
@@ -52,14 +56,16 @@ class StatsService
     def get_basic_info
         api_key = ENV["VALORANT_API_KEY"]
 
-        response = Faraday.get("https://api.henrikdev.xyz/valorant/v1/account/Crop%20Stomper/HMMMM") do |req|
+        response = Faraday.get("https://api.henrikdev.xyz/valorant/v2/by-puuid/account/#{@user.valorant_id}") do |req|
             req.headers['Authorization'] = api_key
         end
 
         if response.status == 200
             data = JSON.parse(response.body)["data"]
+            puts data
             return { success: true, account_level: data["account_level"], small_card: data["card"]["small"], wide_card: data["card"]["wide"] }
         end
+
 
         { success: false }
     end
@@ -67,7 +73,7 @@ class StatsService
     def get_rank_info
         api_key = ENV["VALORANT_API_KEY"]
 
-        response = Faraday.get("https://api.henrikdev.xyz/valorant/v3/mmr/eu/pc/Crop%20Stomper/HMMMM") do |req|
+        response = Faraday.get("https://api.henrikdev.xyz/valorant/v3/by-puuid/mmr/eu/pc/#{@user.valorant_id}") do |req|
             req.headers['Authorization'] = api_key
         end
 
@@ -84,7 +90,7 @@ class StatsService
 
         #this takes last ten matches you checked this shit Gilead by compare tracker.gg stats
 
-        response = Faraday.get("https://api.henrikdev.xyz/valorant/v4/matches/eu/pc/Crop%20Stomper/HMMMM?mode=competitive&size=1") do |req|
+        response = Faraday.get("https://api.henrikdev.xyz/valorant/v4/by-puuid/matches/eu/pc/#{@user.valorant_id}?mode=competitive&size=1") do |req|
             req.headers['Authorization'] = api_key
             req.params['size'] = 20
         end
@@ -96,7 +102,6 @@ class StatsService
             deaths = 0
             data.each do |match|
                 match["players"].each do |player|
-                    puts player
                     if player["name"] == "Crop Stomper" && player["tag"] == "HMMMM"
                         kills += player["stats"]["kills"].to_i
                         assists += player["stats"]["deaths"].to_i
