@@ -18,6 +18,8 @@ Rails.application.routes.draw do
       post "hello" => "server#player_connected"
       post "bye" => "server#player_disconnected"
       get "test" => "server#hello"
+      post "dead" => "server#player_died"
+      post "verify" => "server#verify_account_linking"
     end
   end
 end

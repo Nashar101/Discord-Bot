@@ -34,77 +34,15 @@ end
 
 module Ping
 
-  Bot.register_application_command(:example, 'Example commands', server_id: ENV.fetch('SLASH_COMMAND_BOT_SERVER_ID', nil)) do |cmd|
-    cmd.subcommand_group(:fun, 'Fun things!') do |group|
-      group.subcommand('8ball', 'Shake the magic 8 ball') do |sub|
-        sub.string('question', 'Ask a question to receive wisdom', required: true)
-      end
-
-      group.subcommand('java', 'What if it was java?')
-
-      group.subcommand('calculator', 'do math!') do |sub|
-        sub.integer('first', 'First number')
-        sub.string('operation', 'What to do', choices: { times: '*', divided_by: '/', plus: '+', minus: '-' })
-        sub.integer('second', 'Second number')
-      end
-
-      group.subcommand('button-test', 'Test a button!')
-    end
-  end
-
-  Bot.register_application_command(:spongecase, 'Are you mocking me?', server_id: ENV.fetch('SLASH_COMMAND_BOT_SERVER_ID', nil)) do |cmd|
-    cmd.string('message', 'Message to spongecase')
-    cmd.boolean('with_picture', 'Show the mocking sponge?')
-  end
-
   Bot.register_application_command(:valorant_stats, 'Check your Valorant stats', server_id: ENV.fetch('SLASH_COMMAND_BOT_SERVER_ID', nil))
   Bot.register_application_command(:link_valorant_account, 'Link your Valorant account by changing your ingame title', server_id: ENV.fetch('SLASH_COMMAND_BOT_SERVER_ID', nil)) do |cmd|
     cmd.string('name', 'Username', required: true)
     cmd.string('tag', 'Tagline', required: true)
     cmd.string('title', 'Title', required: true)
   end
-  # This is a really large and fairly pointless example of a subcommand.
-  # You can also create subcommand handlers directly on the command like so
-  #    Bot.application_command(:other_example).subcommand(:test) do |event|
-  #      # ...
-  #    end
-  #    Bot.application_command(:other_example).subcommand(:test2) do |event|
-  #      # ...
-  #    end
-  Bot.application_command(:example).group(:fun) do |group|
-    group.subcommand('8ball') do |event|
-      wisdom = ['Yes', 'No', 'Try Again Later'].sample
-      event.respond(content: <<~STR, ephemeral: true)
-        ```
-        #{event.options['question']}
-        ```
-        _#{wisdom}_
-      STR
-    end
 
-    group.subcommand(:java) do |event|
-      javaisms = %w[Factory Builder Service Provider Instance Class Reducer Map]
-      jumble = []
-      [*5..10].sample.times do
-        jumble << javaisms.sample
-      end
+  Bot.register_application_command(:link_terraria_account, 'Link your Terraria account to your Discord account', server_id: ENV.fetch('SLASH_COMMAND_BOT_SERVER_ID', nil))
 
-      event.respond(content: jumble.join)
-    end
-
-    group.subcommand(:calculator) do |event|
-      result = event.options['first'].send(event.options['operation'], event.options['second'])
-      event.respond(content: result)
-    end
-
-    group.subcommand(:'button-test') do |event|
-      event.respond(content: 'Button test', ephemeral: true) do |_, view|
-        view.row do |r|
-          r.button(label: 'Test!', style: :primary, emoji: { id: 1382459989469433920, name: "Hyetta" }, custom_id: 'test_button:1')
-        end
-      end
-    end
-  end
 
   Bot.application_command(:spongecase) do |event|
     ops = %i[upcase downcase]
@@ -156,6 +94,25 @@ module Ping
     end
   end
 
+  Bot.application_command(:link_terraria_account) do |event|
+    if User.find(event.user.id).steam_id.present?
+      event.respond(content: "You have already linked your account", ephemeral: true)
+    else
+      verification_value = SecureRandom.hex(16)
+      $redis.set(verification_value.to_s, event.user.id)
+      $redis.expire(verification_value.to_s, 60 * 5)
+      event.respond(content: "To link your Terraria account please connect to the server\n
+                            IP: nashar101.ddns.net\n
+                            Password: V@lor4ntSvCks101\n
+                            And type /link #{verification_value.to_s}.\n
+                            After you have done the aforementioned actions you will be notified about the account linkage.\n
+                            You have 5 minutes.
+                            and click the confirm button\n", ephemeral: true)
+    end
+  end
+
+
+
   Bot.button(custom_id: /^account_link_button:/) do |event|
     full_name = event.interaction.button.custom_id.split(':')[1].split(",")
 
@@ -176,7 +133,7 @@ module Ping
   end
 
   Bot.member_join do |event|
-    User.create(user_id: event.user.id, valorant_id: nil)
+    User.create(user_id: event.user.id, valorant_id: nil, steam_id: nil)
   end
 
 end
