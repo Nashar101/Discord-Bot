@@ -25,6 +25,7 @@ class Api::V1::ServerController < ApplicationController
   #Misc commands
   def send_player_count_message(player_name, status)
     if $redis.get("terraria_active_player_count") == "1"
+      #Bot.user(304225991612432384).display_name
       Bot.send_message(ServerChannelID, "#{player_name} has #{status}.  There is now #{$redis.get("terraria_active_player_count")} player online.")
     else
       Bot.send_message(ServerChannelID, "#{player_name} has #{status}.  There are now #{$redis.get("terraria_active_player_count")} players online.")
@@ -36,12 +37,11 @@ class Api::V1::ServerController < ApplicationController
     if $redis.get(params[:verification_value]).nil?
       render json: {success: false}, status: 498
     else
+      render json: {success: true }, status: 200
       user = User.find($redis.get(params[:verification_value]))
       user.steam_id = params[:steam_id]
       user.save!
-
       Bot.send_message(ServerChannelID, "#{Bot.user($redis.get(params[:verification_value])).mention} your account has now being linked, some events that occur to you in the server will be shown here.")
-      render json: { success: true}, status: 200
     end
   end
 
